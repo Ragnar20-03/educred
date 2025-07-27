@@ -3,15 +3,17 @@ import cors from "cors"
 import { PORT } from "./config/dotenv"
 
 import { connect_mongo } from "./db/schema"
-
-
-
+import { router as userRouter } from "./routes/user/user"
 const app = express()
+app.use(cors())
+app.use(express.json())
+
+app.use('/api/v1/user', userRouter);
 
 
 app.get('/health', (req: Request, res: Response) => {
     res.status(200).json({
-        status: "Server is ONNNNN"
+        status: "Server is ON"
     })
 })
 

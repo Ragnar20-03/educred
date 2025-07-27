@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { model, Mongoose, Schema } from "mongoose";
 import { MONGO_URL } from "../config/dotenv";
 
 export const connect_mongo = async () => {
@@ -12,32 +12,41 @@ export const connect_mongo = async () => {
 
 
 const accountScheam = new Schema({
-    email: { type: String, required: true, unique: true },
+    institueEmail: { type: String, required: false, unique: true },
     password: { type: String, required: true },
-    uniqueID: { type: String, required: true, unique: true },
-    uid: { type: mongoose.Schema.Types.ObjectId, ref: "user" }
+    email: { type: String, required: false, unique: false },
+    fname: { type: String, required: false },
+    lname: { type: String, required: false },
+    ph: { type: String, required: false },
+    uid: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+
 })
 
 const userSchema = new Schema({
-    fname: { type: String, required: true },
-    lname: { type: String, required: true },
-    email: { type: String, required: true },
-    ph: { type: String, required: true },
+    // fname: { type: String, required: false },
+    // lname: { type: String, required: false },
+    // email: { type: String, required: false },
+    // ph: { type: String, required: false },
     education: {
         type: {
-            year: { type: String, required: true },
-            branch: { type: String, required: true },
+            year: { type: String, required: false },
+            branch: { type: String, required: false },
         },
-        required: true
+        required: false
     },
-    ecred: { type: Number, required: true },
-    reputation: { type: Number, required: true },
-    achivements: { type: String, required: true },
-    walletAddress: { type: String, required: true, unique: true },
+    ecred: { type: Number, default: 0 },
+    reputation: { type: Number, default: 0 },
+    achivements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achivement", }],
+    wallet: {
+        type: {
+            walletAddress: { type: String, required: true },
+            walletName: { type: String, required: true }
+        }
+    }
 })
 
 const achivementSchema = new Schema({
-    achivementName: { type: String, required: true },
+    achivementName: { type: String, required: false },
     submittedOn: { type: Date, default: Date.now },
     enum: [
         "hackathon",
@@ -53,8 +62,12 @@ const achivementSchema = new Schema({
     ],
     isVerified: { type: Boolean, default: false },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-    // certificate :  { type: String, required: true }, 
+    // certificate :  { type: String, required: false }, 
     certificate: { type: String, required: false },
     pointsAwarded: { type: Number, default: 0 }
 })
 
+
+export const Account = model("account", accountScheam);
+export const User = model("user", userSchema);
+export const Achivement = model("achivement", achivementSchema);

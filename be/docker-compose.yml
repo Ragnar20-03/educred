@@ -12,6 +12,7 @@ services:
       - PORT=5100
       - MONGO_URI=mongodb://admin:admin123@mongo:27017/educred
     volumes:
+      - .:/app # ✅ Mount your local project to container
       - /app/node_modules # ✅ keeps container's node_modules
     restart: always
 

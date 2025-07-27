@@ -12,8 +12,7 @@ services:
       - PORT=5100
       - MONGO_URI=mongodb://admin:admin123@mongo:27017/educred
     volumes:
-      - .:/app
-      - /app/node_modules
+      - /app/node_modules # ✅ keeps container's node_modules
     restart: always
 
   mongo:
@@ -21,21 +20,21 @@ services:
     container_name: educred-mongo
     ports:
       - "27017:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=admin123
+    # environment:
+    #   - MONGO_INITDB_ROOT_USERNAME=admin
+    #   - MONGO_INITDB_ROOT_PASSWORD=admin123
     volumes:
       - mongo-data:/data/db
     restart: always
 
-  # # 🔮 Blockchain service placeholder (for future)
+  # Optional: Blockchain container placeholder
   # blockchain:
-  #   image: node:22 # Can change to solana, hardhat, or ganache image later
+  #   image: node:22
   #   container_name: educred-blockchain
   #   working_dir: /blockchain
   #   volumes:
   #     - ./blockchain:/blockchain
-  #   command: ["sleep", "infinity"] # Keeps container alive for dev/debug
+  #   command: ["sleep", "infinity"]
   #   restart: always
 
 volumes:

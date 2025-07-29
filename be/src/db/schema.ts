@@ -19,30 +19,40 @@ const accountScheam = new Schema({
     lname: { type: String, required: false },
     ph: { type: String, required: false },
     uid: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
-
-})
-
-const userSchema = new Schema({
-    // fname: { type: String, required: false },
-    // lname: { type: String, required: false },
-    // email: { type: String, required: false },
-    // ph: { type: String, required: false },
-    education: {
-        type: {
-            year: { type: String, required: false },
-            branch: { type: String, required: false },
-        },
-        required: false
-    },
-    ecred: { type: Number, default: 0 },
-    reputation: { type: Number, default: 0 },
-    achivements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achivement", }],
     wallet: {
         type: {
             walletAddress: { type: String, required: true },
             walletName: { type: String, required: true }
         }
     }
+
+})
+
+const userSchema = new Schema({
+    education: [
+        {
+            collegeName: {
+                type: String,
+
+            },
+            degree: {
+                type: String
+            },
+            place: {
+                type: String,
+            },
+            duration: {
+                type: String,
+            },
+            percentage: {
+                type: String,
+            }
+        }
+    ],
+    ecred: { type: Number, default: 0 },
+    reputation: { type: Number, default: 0 },
+    achivements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achivement" }],
+
 })
 
 const achivementSchema = new Schema({

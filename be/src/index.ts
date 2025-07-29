@@ -3,7 +3,7 @@ import cors from "cors"
 import { PORT } from "./config/dotenv"
 
 import { connect_mongo } from "./db/schema"
-import { router as userRouter } from "./routes/user/user"
+import { router as userRouter } from "./routes/user/main"
 const app = express()
 app.use(cors())
 app.use(express.json())

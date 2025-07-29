@@ -1,7 +1,9 @@
 import express from "express"
 import { OTP } from "../../service/otp";
 import { sendOTP } from "../../service/email";
-
+import { Account, User } from "../../db/schema";
+import jwt from "jsonwebtoken"
+import { JWT_SECRET } from "../../config/dotenv";
 export const router = express.Router();
 
 
@@ -19,30 +21,94 @@ router.post('/get-otp', async (req, res) => {
 })
 
 router.post('/verify-otp', async (req, res) => {
-    const { email, otp } = req.body
-    let otpInstance = OTP.getInstance()
-    if (await otpInstance?.validateOtp(email, otp)) {
+    try {
+        const { institueEmail, otp, password, fname, lname, ph, wallet } = req.body;
 
-        return res.status(200).json({
+        // Step 1: Validate all required inputs
+        if (!institueEmail || !otp || !password || !fname || !lname || !ph || !wallet?.walletAddress || !wallet?.walletName) {
+            return res.status(400).json({
+                status: "failed",
+                msg: "All fields including walletAddress and walletName are required.",
+            });
+        }
+
+        // Step 2: Validate OTP using your OTP class
+        const otpInstance = OTP.getInstance();
+        const isOtpValid = await otpInstance?.validateOtp(institueEmail, otp);
+
+        if (!isOtpValid) {
+            return res.status(400).json({
+                status: "failed",
+                msg: "Invalid or expired OTP",
+            });
+        }
+
+        // Step 3: Create User document
+        const userDoc = await User.create({}); // empty for now, can add education later
+
+        // Step 4: Create Account and reference User
+        const accountDoc = await Account.create({
+            institueEmail,
+            password,
+            email: institueEmail, // optional: duplicate if needed
+            fname,
+            lname,
+            ph,
+            uid: userDoc._id,
+            wallet: {
+                walletAddress: wallet.walletAddress,
+                walletName: wallet.walletName,
+            }
+        });
+
+        return res.status(201).json({
             status: "success",
-            msg: "OTP verify Succesfully , Account created"
-        })
-    }
-    else {
-        return res.status(200).json({
+            msg: "Account and user created successfully!",
+            accountId: accountDoc._id,
+            userId: userDoc._id,
+        });
+
+    } catch (err) {
+        console.error("Error in /verify-otp:", err);
+        return res.status(500).json({
             status: "failed",
-            msg: "Invalid Otp !"
-        })
+            msg: "Internal server error",
+        });
     }
-})
+});
 
-router.post('/wallet', async (req, res) => {
 
-})
 
 router.post('/login', async (req, res) => {
-    return res.status(200).json({
-        status: "success",
-        msg: "Login Succesful"
-    })
+    try {
+        const { email, password } = req.body;
+        Account.findOne(
+            {
+                $or: [{ institueEmail: email }, { email: email }]
+                , password: password
+            }
+        ).then((res1) => {
+            console.log("res1 is : ", res1)
+            if (res1) {
+                let token = jwt.sign({ uid: res1.uid }, JWT_SECRET)
+                return res.status(200).json({
+                    status: "success",
+                    token,
+                    msg: "Login Succesful!"
+                })
+            }
+            else {
+                return res.status(501).json({
+                    status: "failed",
+                    msg: "Invalid Details"
+                })
+            }
+        })
+    } catch (err) {
+        return res.status(500).json({
+            status: "failed",
+            msg: "Something went wrong!"
+        })
+    }
+
 })

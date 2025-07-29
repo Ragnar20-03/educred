@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./educred-be
+    container_name: educred-backend
+    ports:
+      - "5100:5100"
+    depends_on:
+      - mongo
+      - ml
+    environment:
+      - PORT=5100
+      - MONGO_URI=mongodb://admin:admin123@mongo:27017/educred
+      - ML_SERVICE_URL=http://ml:5200
+    volumes:
+      - ./educred-be:/app
+      - /app/node_modules
+    restart: always
+    networks:
+      - educred-net
+
+  ml:
+    build: ./educred-ml
+    container_name: educred-ml
+    ports:
+      - "5200:5200"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: always
+    networks:
+      - educred-net
+
+  mongo:
+    image: mongo
+    container_name: educred-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+    networks:
+      - educred-net
+
+volumes:
+  mongo-data:
+
+networks:
+  educred-net:
+    driver: bridge

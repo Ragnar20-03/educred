@@ -1,0 +1,5 @@
+Flask==2.2.5
+pytesseract==0.3.10
+Pillow==9.3.0
+rapidfuzz
+openai

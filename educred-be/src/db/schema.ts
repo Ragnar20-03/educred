@@ -73,7 +73,7 @@ const achivementSchema = new Schema({
     isVerified: { type: Boolean, default: false },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     // certificate :  { type: String, required: false }, 
-    certificate: { type: String, required: false },
+    url: { type: String, required: false },
     pointsAwarded: { type: Number, default: 0 }
 })
 

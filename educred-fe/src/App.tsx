@@ -1,11 +1,13 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+
 import "./App.css";
 import Home from "./pages/Home";
 import { Route, Routes } from "react-router-dom";
 import { MarketPlace } from "./pages/MarketPlace";
 import { Nav } from "./components/Nav";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import AdminLayout from "./pages/AdminLayout";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -15,9 +17,13 @@ function App() {
       <div>
         <Nav />
       </div>
+
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/admin" element={<AdminLayout />} />
         <Route path="/market" element={<MarketPlace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Routes>
     </div>
   );

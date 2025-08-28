@@ -7,7 +7,8 @@ import { MarketPlace } from "./pages/MarketPlace";
 import { Nav } from "./components/Nav";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import AdminLayout from "./pages/AdminLayout";
+import AdminLayout from "./pages/admin/AdminLayout";
+import Profile from "./pages/admin/Profile";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -21,6 +22,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin" element={<AdminLayout />} />
+        <Route path="/admin/profile" element={<Profile />} />
         <Route path="/market" element={<MarketPlace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

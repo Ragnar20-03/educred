@@ -1,4 +1,15 @@
+"use client";
+
 import { useState, useEffect } from "react";
+import Achievements from "./Achivement";
+import Rankings from "./Rankings";
+import MarketPlace from "../MarketPlace";
+import Education from "./Education";
+import History from "./History";
+import Profile from "./Profile";
+import Home from "../Home";
+import { useNavigate } from "react-router-dom";
+import { Nav } from "../../components/Nav";
 
 interface NavigationItem {
   id: string;
@@ -24,6 +35,14 @@ export const AdminLayout = () => {
   const [activeItem, setActiveItem] = useState("home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!localStorage.getItem("token")) {
+      // alert("Please login !");
+      // navigate("/");
+    }
+  });
 
   // Mock student data
   const studentData: StudentData = {
@@ -56,11 +75,6 @@ export const AdminLayout = () => {
       icon: "🏆",
       description: "View and add achievements",
       hasSubmenu: true,
-      submenu: [
-        { id: "add-achievement", label: "Add Achievement", icon: "➕" },
-        { id: "view-achievements", label: "View All", icon: "📋" },
-        { id: "achievement-history", label: "History", icon: "📚" },
-      ],
     },
     {
       id: "education",
@@ -126,22 +140,14 @@ export const AdminLayout = () => {
           </div>
         </div>
 
-        {/* Content Placeholder */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
-          <div className="text-center space-y-4">
-            <div className="text-6xl opacity-20">{activeItemData.icon}</div>
-            <h2 className="text-xl font-bold text-gray-800">
-              {activeItemData.label} Component
-            </h2>
-            <p className="text-gray-600 max-w-md mx-auto">
-              This is where the {activeItemData.label.toLowerCase()} component
-              will be loaded. Each section will be implemented as a separate
-              component.
-            </p>
-            <div className="inline-block px-4 py-2 bg-gray-100 rounded-lg font-mono text-sm text-gray-700">
-              Component: {activeItemData.id}.tsx
-            </div>
-          </div>
+        {/* Dynamic Component Rendering */}
+        <div>
+          {activeItem === "profile" && <Profile />}
+          {activeItem === "education" && <Education />}
+          {activeItem === "history" && <History />}
+          {activeItem === "market" && <MarketPlace />}
+          {activeItem === "rankings" && <Rankings />}
+          {activeItem === "achievements" && <Achievements />}
         </div>
       </div>
     );
@@ -285,7 +291,7 @@ export const AdminLayout = () => {
           <div className="relative m-3">
             <button
               onClick={handleLogout}
-              className={` flex items-center justify-center space-x-2 p-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-all duration-300 hover:scale-105 transform border border-red-200 ${
+              className={`flex items-center justify-center space-x-2 p-3 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-all duration-300 hover:scale-105 transform border border-red-200 ${
                 sidebarCollapsed ? "px-2" : ""
               }`}
             >

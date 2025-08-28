@@ -96,7 +96,7 @@ def predict():
             "status": "success",
             "predicted_category": predicted_category,
             "expected_name": full_name,
-            "name_match": name_match,
+            "name_match": name_match ,
             "confidence": confidence,
             "ocr_text": extracted_text,
             # "llm_summary": llm_summary
@@ -105,6 +105,41 @@ def predict():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+
+
+@app.route('/check_duplicate', methods=['POST'])
+def check_duplicate():
+    # """
+    # Check if a similar certificate (achievement) is already uploaded
+    # based on issued date and description.
+    # """
+    data = request.get_json()
+
+    description = data.get("description", "").strip()
+    past_certificates = data.get("past_certificates", [])  
+    # past_certificates = [{ "issued_date": "...", "description": "..." }, ...]
+
+    if  not description:
+        return jsonify({"status": "error", "message": "Missing issued_date or description"}), 400
+
+    for cert in past_certificates:
+        # Match issued date strictly
+        # if cert.get("issued_date") == issued_date:
+        #     # Check description similarity
+        sim = fuzz.token_sort_ratio(cert.get("description", ""), description)
+        if sim >= 85:  # High similarity
+            return jsonify({
+                "status": "duplicate",
+                "message": "Similar certificate already exists",
+                "matched_certificate": cert
+            }), 200
+
+    return jsonify({
+        "status": "unique",
+        "message": "No duplicate found"
+    }), 200
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5200)

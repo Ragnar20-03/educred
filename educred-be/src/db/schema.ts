@@ -31,9 +31,8 @@ const accountScheam = new Schema({
 const userSchema = new Schema({
     education: [
         {
-            collegeName: {
+            instituteName: {
                 type: String,
-
             },
             degree: {
                 type: String
@@ -57,6 +56,8 @@ const userSchema = new Schema({
 
 const achivementSchema = new Schema({
     achivementName: { type: String, required: false },
+    achivementDescription: { type: String, required: false },
+    issuedDate: { type: String, required: false },
     submittedOn: { type: Date, default: Date.now },
     enum: [
         "hackathon",

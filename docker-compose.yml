@@ -27,6 +27,8 @@ services:
       - "5200:5200"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./educred-ml/app:/app/app # mount local code into container
     restart: always
     networks:
       - educred-net

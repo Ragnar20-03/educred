@@ -3,6 +3,9 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { login } from "../redux/authSlice";
+import { useNavigate } from "react-router-dom";
 
 interface LoginFormData {
   institueEmail: string;
@@ -10,6 +13,8 @@ interface LoginFormData {
 }
 
 export const Login = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [isLoaded, setIsLoaded] = useState(false);
   const [formData, setFormData] = useState<LoginFormData>({
     institueEmail: "",
@@ -59,7 +64,10 @@ export const Login = () => {
 
     // Mock login logic
     console.log("Login attempt:", formData);
+    dispatch(login("Bearer toshanstoken"));
+
     alert(`Login successful! Welcome back.`);
+    navigate("/admin");
   };
 
   return (

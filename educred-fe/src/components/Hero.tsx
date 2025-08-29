@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const Hero = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [activeCard, setActiveCard] = useState<number | null>(null);
-
+  const navigate = useNavigate();
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
@@ -156,12 +157,22 @@ export const Hero = () => {
                 </h4>
 
                 <div className="space-y-3">
-                  <button className="w-full py-2 px-4 bg-black text-white font-semibold rounded-lg transition-all duration-300 hover:bg-gray-800 hover:scale-105 hover:shadow-lg transform relative overflow-hidden group">
+                  <button
+                    onClick={() => {
+                      navigate("/register");
+                    }}
+                    className="w-full py-2 px-4 bg-black text-white font-semibold rounded-lg transition-all duration-300 hover:bg-gray-800 hover:scale-105 hover:shadow-lg transform relative overflow-hidden group"
+                  >
                     <span className="relative z-10">Sign Up</span>
                     <div className="absolute inset-0 bg-gradient-to-r from-gray-700 to-black opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   </button>
 
-                  <button className="w-full py-2 px-4 bg-transparent border-2 border-gray-300 text-black font-semibold rounded-lg transition-all duration-300 hover:border-black hover:bg-gray-50 hover:scale-105 transform">
+                  <button
+                    onClick={() => {
+                      navigate("/login");
+                    }}
+                    className="w-full py-2 px-4 bg-transparent border-2 border-gray-300 text-black font-semibold rounded-lg transition-all duration-300 hover:border-black hover:bg-gray-50 hover:scale-105 transform"
+                  >
                     Login
                   </button>
                 </div>

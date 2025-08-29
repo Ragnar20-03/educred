@@ -4,10 +4,11 @@ import { sendOTP } from "../../service/email";
 import { Account, User } from "../../db/schema";
 import jwt from "jsonwebtoken"
 import { JWT_SECRET } from "../../config/dotenv";
+import { M_AuthMiddleware } from "../../middlewares/authMiddleware";
 export const router = express.Router();
 
 
-router.post('/get-otp', async (req, res) => {
+router.post('/get-otp', M_AuthMiddleware, async (req, res) => {
     const { email } = req.body;
     let otp = OTP.getInstance();
     let currentOtp = await otp?.generateOTP(email)
@@ -20,7 +21,7 @@ router.post('/get-otp', async (req, res) => {
     })
 })
 
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', M_AuthMiddleware, async (req, res) => {
     try {
         const { institueEmail, otp, password, fname, lname, ph, wallet } = req.body;
 
@@ -90,10 +91,11 @@ router.post('/login', async (req, res) => {
         ).then((res1) => {
             console.log("res1 is : ", res1)
             if (res1) {
-                let token = jwt.sign({ uid: res1.uid }, JWT_SECRET)
+                let token = jwt.sign({ uid: res1.uid, aid: res1._id }, JWT_SECRET)
+                res.cookie('token', token);
                 return res.status(200).json({
                     status: "success",
-                    token,
+                    token: token,
                     msg: "Login Succesful!"
                 })
             }

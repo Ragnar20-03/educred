@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import AdminLayout from "./pages/admin/AdminLayout";
 import Profile from "./pages/admin/Profile";
+import ProtectedRoute from "./redux/ProtectedRoute";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -20,7 +21,14 @@ function App() {
       </div>
 
       <Routes>
-        <Route path="/admin" element={<AdminLayout />}></Route>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        ></Route>
       </Routes>
 
       <Routes>

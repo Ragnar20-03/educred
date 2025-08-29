@@ -13,7 +13,7 @@ interface Student {
   joinDate: string;
 }
 
-export const Records = () => {
+export const Rankings = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [animateRanks, setAnimateRanks] = useState(false);
   const [hoveredRank, setHoveredRank] = useState<number | null>(null);
@@ -491,4 +491,4 @@ export const Records = () => {
   );
 };
 
-export default Records;
+export default Rankings;

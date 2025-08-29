@@ -25,7 +25,6 @@ const accountScheam = new Schema({
             walletName: { type: String, required: true }
         }
     }
-
 })
 
 const userSchema = new Schema({

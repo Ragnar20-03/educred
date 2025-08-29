@@ -1,4 +1,4 @@
-import Records from "../components/Dashboard";
+import Records, { Rankings } from "../components/Rankings";
 import { Hero } from "../components/Hero";
 import { Nav } from "../components/Nav";
 
@@ -9,7 +9,7 @@ function Home() {
         <Hero />
       </div>
       <div>
-        <Records />
+        <Rankings />
       </div>
     </div>
   );

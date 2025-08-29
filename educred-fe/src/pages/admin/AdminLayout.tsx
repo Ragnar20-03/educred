@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Achievements from "./Achivement";
 import Rankings from "./Rankings";
 import MarketPlace from "../MarketPlace";
@@ -9,7 +9,10 @@ import History from "./History";
 import Profile from "./Profile";
 import Home from "../Home";
 import { useNavigate } from "react-router-dom";
-import { Nav } from "../../components/Nav";
+
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../../redux/store";
+import { logout } from "../../redux/authSlice";
 
 interface NavigationItem {
   id: string;
@@ -37,13 +40,19 @@ export const AdminLayout = () => {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  useEffect(() => {
-    if (!localStorage.getItem("token")) {
-      // alert("Please login !");
-      // navigate("/");
-    }
-  });
+  const dispatch = useDispatch();
+  const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      alert("Please login !");
+      navigate("/"); // will run only AFTER alert is dismissed
+    }
+  }, [isLoggedIn, navigate]);
+
+  if (!isLoggedIn) {
+    return null;
+  }
   // Mock student data
   const studentData: StudentData = {
     name: "Alex Johnson",
@@ -110,8 +119,9 @@ export const AdminLayout = () => {
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
       console.log("Logging out...");
+      dispatch(logout());
       alert("Logged out successfully!");
-      // In real implementation, clear auth tokens and redirect
+      navigate("/");
     }
   };
 

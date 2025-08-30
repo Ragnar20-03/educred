@@ -93,7 +93,6 @@ const authSlice = createSlice({
             state.uid = null;
             state.aid = null;
 
-            localStorage.removeItem("token");
 
         },
     },

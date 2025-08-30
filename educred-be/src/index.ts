@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express"
 import cors from "cors"
 import { PORT } from "./config/dotenv"
+import cookieParser from "cookie-parser"
 
 import { connect_mongo } from "./db/schema"
 import { router as userRouter } from "./routes/user/main"
@@ -20,7 +21,7 @@ app.use(cors({
     credentials: true  // Allow credentials (cookies)
 }));
 
-// app.use(cookieParser()); // Use cookie-parser here
+app.use(cookieParser()); // Use cookie-parser here
 
 app.use(express.json())
 

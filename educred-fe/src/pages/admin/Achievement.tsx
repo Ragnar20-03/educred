@@ -1,30 +1,39 @@
 "use client";
 
+import axios from "axios";
 import type React from "react";
 
 import { useState, useEffect } from "react";
 
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../../redux/store";
+import { ACHIEVEMENT } from "../../URL";
+import { logout } from "../../redux/authSlice";
+
 interface Achievement {
   id: number;
   type: string;
-  name: string;
-  certificate?: string;
-  points: number;
+  achievementName: string;
+  achievementInfo: string;
+  url?: string;
+  pointsAwarded: number;
+  reputationAwarded: number;
   coins: number;
-  status: "pending" | "approved" | "rejected";
-  submittedDate: string;
-  approvedDate?: string;
+  submittedOn: string;
 }
 
 export const Achievements = () => {
+  const { uid, aid, token } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch();
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<"add" | "view">("add");
   const [showRewardPopup, setShowRewardPopup] = useState(false);
   const [rewardData, setRewardData] = useState({ points: 0, coins: 0 });
   const [formData, setFormData] = useState({
     type: "",
-    name: "",
-    certificate: null as File | null,
+    achievementName: "",
+    achievementInfo: "",
+    file: null as File | null,
   });
 
   // Achievement types with their default points
@@ -62,40 +71,27 @@ export const Achievements = () => {
   ];
 
   // Mock previous achievements
-  const [achievements, setAchievements] = useState<Achievement[]>([
-    {
-      id: 1,
-      type: "hackathon",
-      name: "Web3 Innovation Hackathon 2024",
-      certificate: "hackathon-cert.pdf",
-      points: 200,
-      coins: 80,
-      status: "approved",
-      submittedDate: "2024-01-10",
-      approvedDate: "2024-01-12",
-    },
-    {
-      id: 2,
-      type: "certification-course",
-      name: "Advanced React Development",
-      certificate: "react-cert.pdf",
-      points: 100,
-      coins: 40,
-      status: "approved",
-      submittedDate: "2024-01-05",
-      approvedDate: "2024-01-07",
-    },
-    {
-      id: 3,
-      type: "workshop",
-      name: "AI/ML Workshop Series",
-      certificate: "ml-workshop.pdf",
-      points: 75,
-      coins: 30,
-      status: "pending",
-      submittedDate: "2024-01-15",
-    },
-  ]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+
+  useEffect(() => {
+    console.log("use effect is runningnnnnnnnn");
+
+    axios
+      .get(`${ACHIEVEMENT}/${uid}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      })
+      .then((res: any) => {
+        console.log("response from thie achivement GET : ", res);
+        setAchievements(res.data.achievements);
+      })
+      .catch((err) => {
+        console.log("ERROR  from the  ACHIEVMENT GET", err);
+      });
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 300);
@@ -108,7 +104,7 @@ export const Achievements = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    handleInputChange("certificate", file);
+    handleInputChange("file", file);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -121,31 +117,73 @@ export const Achievements = () => {
     const coins = Math.floor(points * 0.4);
 
     // Create new achievement
-    const newAchievement: Achievement = {
-      id: achievements.length + 1,
-      type: formData.type,
-      name: formData.name,
-      certificate: formData.certificate?.name,
-      points: points,
-      coins: coins,
-      status: "pending",
-      submittedDate: new Date().toISOString().split("T")[0],
-    };
+    // const newAchievement: Achievement = {
+    //   id: achievements.length + 1,
+    //   type: formData.type,
+    //   name: formData.name,
+    //   file: formData.file?.name,
+    //   points: points,
+    //   coins: coins,
+    //   status: "pending",
+    //   submittedDate: new Date().toISOString().split("T")[0],
+    // };
 
     // Add to achievements list
-    setAchievements((prev) => [newAchievement, ...prev]);
+    // setAchievements((prev) => [newAchievement, ...prev]);
 
     // Show reward popup
-    setRewardData({ points, coins });
-    setShowRewardPopup(true);
+
+    const data = new FormData();
+    if (formData.file) {
+      data.append("file", formData.file); // field must match `upload.single("file")`
+    }
+    data.append("achievementName", formData.achievementName);
+    data.append("achievementInfo", formData.achievementInfo);
+    data.append("type", formData.type);
+
+    axios
+      .post(`${ACHIEVEMENT}/${uid}`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      })
+      .then((res) => {
+        console.log("response from ACHIEVEMENT_ADD_URL:", res.data);
+        setRewardData({ points, coins });
+        setShowRewardPopup(true);
+      })
+      .catch((err) => {
+        console.error("ERROR from ACHIEVEMENT_ADD_URL:", err);
+        if (
+          err.response.data.msg == "Duplicate Certification Found ! , duplicate"
+        ) {
+          alert("Same certificates can not be uploaded twice!");
+        } else if (err.status == 401) {
+          alert("unauthorized Requst");
+          // dispatch(logout());
+        } else {
+          alert(
+            "Verification Failed ! , certificate does not belongs to you .."
+          );
+        }
+      });
 
     // Reset form
-    setFormData({ type: "", name: "", certificate: null });
+    setFormData({
+      type: " ",
+      achievementInfo: " ",
+      achievementName: "",
+      file: null,
+    });
 
     // Switch to view tab after submission
-    setTimeout(() => {
-      setActiveTab("view");
-    }, 3000);
+    // setTimeout(() => {
+    //   setActiveTab("view");
+    // }, 3000);
+
+    alert("data going to submit is : " + formData);
   };
 
   const getStatusColor = (status: string) => {
@@ -237,8 +275,26 @@ export const Achievements = () => {
               </label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
+                value={formData.achievementName}
+                onChange={(e) =>
+                  handleInputChange("achievementName", e.target.value)
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-mono"
+                placeholder="Enter the name of your achievement"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Achievement Info *
+              </label>
+              <input
+                type="text"
+                value={formData.achievementInfo}
+                onChange={(e) =>
+                  handleInputChange("achievementInfo", e.target.value)
+                }
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black font-mono"
                 placeholder="Enter the name of your achievement"
                 required
@@ -259,11 +315,11 @@ export const Achievements = () => {
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Upload certificate or proof document (PDF, Image, or Document)
+                Upload file or proof document (PDF, Image, or Document)
               </p>
             </div>
 
-            {formData.type && (
+            {/* {formData.type && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center space-x-2">
                   <span className="text-green-600 text-xl">✅</span>
@@ -287,12 +343,12 @@ export const Achievements = () => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
             <button
               type="submit"
               disabled={
-                !formData.type || !formData.name || !formData.certificate
+                !formData.type || !formData.achievementName || !formData.file
               }
               className="w-full group relative px-6 py-3 bg-black text-white font-semibold rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg transform disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
@@ -335,42 +391,25 @@ export const Achievements = () => {
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2">
                       <h3 className="text-lg font-bold text-black">
-                        {achievement.name}
+                        {achievement.achievementName}
                       </h3>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          achievement.status
-                        )}`}
-                      >
-                        {achievement.status.charAt(0).toUpperCase() +
-                          achievement.status.slice(1)}
-                      </span>
                     </div>
                     <p className="text-gray-600 mb-3">
-                      {getTypeLabel(achievement.type)}
+                      {/* {getTypeLabel(achievement.achievementInfo)} */}
+                      {achievement.achievementInfo}
                     </p>
                     <div className="flex items-center space-x-4 text-sm text-gray-500">
                       <span>
                         Submitted:{" "}
-                        {new Date(
-                          achievement.submittedDate
-                        ).toLocaleDateString()}
+                        {new Date(20 - 12 - 2003).toLocaleDateString()}
                       </span>
-                      {achievement.approvedDate && (
-                        <span>
-                          Approved:{" "}
-                          {new Date(
-                            achievement.approvedDate
-                          ).toLocaleDateString()}
-                        </span>
-                      )}
                     </div>
                   </div>
                   <div className="text-right space-y-2">
                     <div className="flex items-center space-x-4">
                       <div className="text-center">
                         <div className="font-bold text-green-600">
-                          +{achievement.points}
+                          +{achievement.pointsAwarded}
                         </div>
                         <div className="text-xs text-gray-500">points</div>
                       </div>
@@ -381,7 +420,7 @@ export const Achievements = () => {
                         <div className="text-xs text-gray-500">coins</div>
                       </div>
                     </div>
-                    {achievement.certificate && (
+                    {achievement && (
                       <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-medium transition-colors">
                         View Certificate
                       </button>

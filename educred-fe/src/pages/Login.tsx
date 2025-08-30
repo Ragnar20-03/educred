@@ -6,6 +6,9 @@ import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { login } from "../redux/authSlice";
 import { useNavigate } from "react-router-dom";
+import { LOGIN } from "../URL";
+import axios from "axios";
+import { setAccount } from "../redux/accountSlice";
 
 interface LoginFormData {
   institueEmail: string;
@@ -62,12 +65,22 @@ export const Login = () => {
       return;
     }
 
+    axios
+      .post(LOGIN, formData, { withCredentials: true })
+      .then((res: any) => {
+        console.log("response from : ", LOGIN, " : ", res);
+        dispatch(login(res.data.token));
+        console.log("account is : ", res.data.account);
+
+        dispatch(setAccount(res.data.account));
+        alert(`Login successful! Welcome back.`);
+        navigate("/admin");
+      })
+      .catch((err) => {
+        console.log("ERROR from : ", LOGIN, " : ", err);
+      });
     // Mock login logic
     console.log("Login attempt:", formData);
-    dispatch(login("Bearer toshanstoken"));
-
-    alert(`Login successful! Welcome back.`);
-    navigate("/admin");
   };
 
   return (

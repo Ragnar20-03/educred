@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Achievements from "./Achivement";
+
 import Rankings from "./Rankings";
 import MarketPlace from "../MarketPlace";
 import Education from "./Education";
@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
 import { logout } from "../../redux/authSlice";
+import Achievements from "./Achievement";
 
 interface NavigationItem {
   id: string;
@@ -34,6 +35,8 @@ interface StudentData {
 }
 
 export const AdminLayout = () => {
+  const { eduCred, reputation, fname, lname, wallet, institueEmail } =
+    useSelector((state: RootState) => state.account);
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeItem, setActiveItem] = useState("home");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -111,6 +114,8 @@ export const AdminLayout = () => {
     },
   ];
 
+  useEffect(() => {}, [eduCred, reputation]);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 300);
     return () => clearTimeout(timer);
@@ -120,8 +125,7 @@ export const AdminLayout = () => {
     if (confirm("Are you sure you want to logout?")) {
       console.log("Logging out...");
       dispatch(logout());
-      alert("Logged out successfully!");
-      navigate("/");
+      navigate("/login");
     }
   };
 
@@ -212,10 +216,10 @@ export const AdminLayout = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-black truncate">
-                      {studentData.name}
+                      {fname + "  " + lname}
                     </p>
                     <p className="text-xs text-gray-600 truncate">
-                      {studentData.email}
+                      {institueEmail}
                     </p>
                   </div>
                 </div>
@@ -341,7 +345,7 @@ export const AdminLayout = () => {
                   <div className="text-right">
                     <div className="text-sm text-gray-600">Current Balance</div>
                     <div className="font-bold text-black">
-                      {studentData.eduCredCoins} EduCred
+                      {eduCred} EduCred
                     </div>
                   </div>
                   <div className="w-10 h-10 bg-gradient-to-r from-black to-gray-700 rounded-full flex items-center justify-center text-white font-bold">

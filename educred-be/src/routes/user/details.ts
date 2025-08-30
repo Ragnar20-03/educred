@@ -34,8 +34,3 @@ router.get('/:uid', async (req: Request, res: Response) => {
         });
     }
 });
-
-
-
-
-

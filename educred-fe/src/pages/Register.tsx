@@ -1,9 +1,23 @@
-"use client";
-
-import axios from "axios";
 import type React from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import axios from "axios";
 
-import { useState, useEffect } from "react";
+import {
+  ConnectionProvider,
+  WalletProvider,
+  useWallet,
+} from "@solana/wallet-adapter-react";
+import { WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import {
+  WalletModalProvider,
+  useWalletModal,
+} from "@solana/wallet-adapter-react-ui";
+import { clusterApiUrl, PublicKey } from "@solana/web3.js";
+
+// Wallet adapter UI base styles
+import "@solana/wallet-adapter-react-ui/styles.css";
+import { GET_OTP, VERIFY_OTP } from "../URL";
+import { useNavigate } from "react-router-dom";
 
 interface RegisterFormData {
   institueEmail: string;
@@ -15,7 +29,32 @@ interface RegisterFormData {
   ph: string;
 }
 
-export const Register = () => {
+// Wallet context provider (Devnet by default)
+const WalletContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+
+  // Rely on Wallet Standard detection. If you need legacy adapters, add them here.
+  const wallets = useMemo(() => [], [network]);
+
+  return (
+    <ConnectionProvider endpoint={endpoint}>
+      <WalletProvider wallets={wallets} autoConnect>
+        <WalletModalProvider>{children}</WalletModalProvider>
+      </WalletProvider>
+    </ConnectionProvider>
+  );
+};
+
+const RegisterContent = () => {
+  const navigate = useNavigate();
+  const [otpWarning, setOtpWarning] = useState(false);
+  const { publicKey, connecting, connected, disconnect, wallet, wallets } =
+    useWallet();
+  const { setVisible } = useWalletModal();
+
   const [isLoaded, setIsLoaded] = useState(false);
   const [formData, setFormData] = useState<RegisterFormData>({
     institueEmail: "",
@@ -26,9 +65,6 @@ export const Register = () => {
     lname: "",
     ph: "",
   });
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [walletConnected, setWalletConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState<string>("");
   const [errors, setErrors] = useState<
     Partial<RegisterFormData & { wallet: string; otp: string }>
   >({});
@@ -40,69 +76,41 @@ export const Register = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
 
+  // Detect installed wallets via adapter readyState and Phantom availability
+  const [phantomDetected, setPhantomDetected] = useState<boolean | null>(null);
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoaded(true), 300);
-    return () => clearTimeout(timer);
+    setIsLoaded(true);
+    const isPhantom =
+      typeof window !== "undefined" &&
+      (window as any).phantom?.solana?.isPhantom;
+    setPhantomDetected(!!isPhantom);
   }, []);
 
-  // Check if Phantom wallet is installed
-  const isPhantomInstalled = () => {
-    return (
-      //@ts-ignore
-      typeof window !== "undefined" && window.solana && window.solana.isPhantom
-    );
-  };
-
-  // Connect to Phantom wallet
-  const connectWallet = async () => {
-    if (!isPhantomInstalled()) {
-      alert(
-        "Phantom wallet is not installed. Please install Phantom wallet to continue."
-      );
-      window.open("https://phantom.app/", "_blank");
-      return;
+  // First-time warning after selecting a wallet
+  const warnedRef = useRef(false);
+  useEffect(() => {
+    if (connected && !warnedRef.current) {
+      warnedRef.current = true;
     }
+  }, [connected]);
 
-    try {
-      setIsConnecting(true);
-      //@ts-ignore
-      const response = await window.solana.connect();
-      setWalletConnected(true);
-      setWalletAddress(response.publicKey.toString());
-      console.log("Connected to wallet:", response.publicKey.toString());
-    } catch (error) {
-      console.error("Failed to connect wallet:", error);
-      alert("Failed to connect to Phantom wallet. Please try again.");
-    } finally {
-      setIsConnecting(false);
-    }
-  };
+  // Determine if any installed/loadable wallet is available
 
-  // Disconnect wallet
-  const disconnectWallet = async () => {
-    try {
-      //@ts-ignore
-      await window.solana.disconnect();
-      setWalletConnected(false);
-      setWalletAddress("");
-    } catch (error) {
-      console.error("Failed to disconnect wallet:", error);
-    }
-  };
+  const hasInstalledOrLoadableWallet = (wallets as any[]).some(
+    (w: any) => w.readyState === "Installed" || w.readyState === "Loadable"
+  );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name as keyof RegisterFormData]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
   };
 
   const handleOtpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6); // Only alphanumeric, max 6 chars
+    const value = e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 6);
     setOtp(value);
-    // Clear OTP error when user starts typing
     if (errors.otp) {
       setErrors((prev) => ({ ...prev, otp: undefined }));
     }
@@ -111,7 +119,6 @@ export const Register = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<RegisterFormData & { wallet: string }> = {};
 
-    // Required fields
     if (!formData.institueEmail.trim()) {
       newErrors.institueEmail = "Institute email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.institueEmail)) {
@@ -130,15 +137,9 @@ export const Register = () => {
       newErrors.confirmPassword = "Passwords do not match";
     }
 
-    if (!formData.fname.trim()) {
-      newErrors.fname = "First name is required";
-    }
+    if (!formData.fname.trim()) newErrors.fname = "First name is required";
+    if (!formData.lname.trim()) newErrors.lname = "Last name is required";
 
-    if (!formData.lname.trim()) {
-      newErrors.lname = "Last name is required";
-    }
-
-    // Optional email validation
     if (
       formData.email.trim() &&
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
@@ -146,54 +147,48 @@ export const Register = () => {
       newErrors.email = "Please enter a valid email address";
     }
 
-    // Phone validation
-    if (formData.ph.trim() && !/^\+?[\d\s\-$$$$]{10,}$/.test(formData.ph)) {
+    if (formData.ph.trim() && !/^\+?[\d\s-]{10,}$/.test(formData.ph)) {
       newErrors.ph = "Please enter a valid phone number";
     }
 
-    // Wallet validation
-    if (!walletConnected) {
-      newErrors.wallet = "Please connect your Phantom wallet";
-    }
+    if (!connected) newErrors.wallet = "Please connect your wallet";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const validateOtp = async (): Promise<boolean> => {
-    axios
-      .post("http://localhost:5100/api/v1/user/auth/verify-otp")
-      .then((res) => {
-        console.log("res is from verify otp ", res);
-        return true;
-      });
-    return false;
+  const validateOtp = (): boolean => {
+    const otpRegex = /^[a-zA-Z0-9]{6}$/; // 6 alphanumeric characters
+    if (!otpRegex.test(otp)) {
+      setErrors((prev) => ({
+        ...prev,
+        otp: "OTP must be 6 alphanumeric characters",
+      }));
+      return false;
+    }
+    // Clear previous OTP error if valid
+    setErrors((prev) => ({ ...prev, otp: undefined }));
+    return true;
   };
-
   const handleGetOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (!validateForm()) {
-      return;
-    }
-
+    setIsSendingOtp(true);
     try {
-      // Mock OTP sending logic
       axios
-        .post("http://localhost:5100/api/v1/user/auth/get-otp", {
-          email: formData.email,
-        })
+        .post(`${GET_OTP}`, formData, { withCredentials: true })
         .then((res) => {
-          console.log("res is : ", res);
+          console.log("response from get ot is : ", res);
+          alert(
+            `OTP sent to ${formData.institueEmail}! Please check your email.`
+          );
+          setOtpSent(true);
+          setShowOtpModal(true);
         })
         .catch((err) => {
-          console.log("error from get otp is ; ", err);
+          console.log("error from get ot is : ", err);
         });
-
-      console.log("Sending OTP to:", formData.institueEmail);
-      setOtpSent(true);
-      setShowOtpModal(true);
-      alert(`OTP sent to ${formData.institueEmail}! Please check your email.`);
     } catch (error) {
       console.error("Failed to send OTP:", error);
       alert("Failed to send OTP. Please try again.");
@@ -203,36 +198,31 @@ export const Register = () => {
   };
 
   const handleVerifyAndCreateAccount = async () => {
-    if (!validateOtp()) {
-      return;
-    }
+    const ok = await validateOtp();
+    if (!ok) return;
 
     setIsVerifying(true);
-
     try {
-      // Mock OTP verification and account creation
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate API call
-
-      // Mock registration logic
       const registrationData = {
         ...formData,
         wallet: {
-          walletAddress: walletAddress,
-          walletName: "Phantom",
+          walletAddress: wallet?.adapter.publicKey,
+          walletName: wallet?.adapter.name, // or dynamically selected name
         },
-        otp: otp,
+        otp: otp, // include the entered OTP
       };
+      axios
+        .post(VERIFY_OTP, registrationData, { withCredentials: true })
+        .then((res) => {
+          console.log("res from verify OTP is : ", res);
+          alert("Account created Succesfully !");
+          navigate("/login");
+        })
 
-      console.log("Registration attempt:", registrationData);
-
-      // Close modal and show success
-      setShowOtpModal(false);
-      alert(
-        `Registration successful! Welcome to EduCred.\nWallet: ${walletAddress.slice(
-          0,
-          8
-        )}...${walletAddress.slice(-8)}`
-      );
+        .catch((err) => {
+          console.log("error from verify OTP is : ", err);
+          setOtpWarning(true);
+        });
     } catch (error) {
       console.error("Failed to verify OTP:", error);
       alert("Invalid OTP. Please try again.");
@@ -269,32 +259,61 @@ export const Register = () => {
 
             {/* Wallet Connection */}
             <div className="mb-6">
-              {!walletConnected ? (
-                <button
-                  onClick={connectWallet}
-                  disabled={isConnecting}
-                  className="w-full group relative px-6 py-3 bg-black text-white font-semibold rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg transform disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="relative z-10 flex items-center justify-center">
-                    {isConnecting ? "Connecting..." : "Connect Phantom Wallet"}
-                    <span className="ml-2">👻</span>
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-gray-800 to-black opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                </button>
+              {!connected ? (
+                <div className="w-full space-y-2">
+                  {/* Custom "Select Wallet" button styled like the Get OTP button */}
+                  <button
+                    type="button"
+                    onClick={() => setVisible(true)}
+                    disabled={connecting}
+                    className="w-full group relative px-6 py-3 bg-black text-white font-semibold rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg transform disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="relative z-10 flex items-center justify-center">
+                      {connecting ? "Connecting..." : "Select Wallet"}
+                      <span className="ml-2 transition-transform group-hover:translate-x-1">
+                        👛
+                      </span>
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-gray-800 to-black opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  </button>
+
+                  {/* If no wallets detected, show install Phantom link */}
+                  {phantomDetected === false &&
+                    !hasInstalledOrLoadableWallet && (
+                      <p className="text-sm text-gray-600">
+                        Don{"'"}t have a wallet?{" "}
+                        <a
+                          href="https://phantom.app/download"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-black font-semibold hover:underline"
+                        >
+                          Install Phantom
+                        </a>{" "}
+                        to add it to your browser.
+                      </p>
+                    )}
+                </div>
               ) : (
                 <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                       <p className="text-sm text-gray-600 font-medium">
                         Connected Wallet
                       </p>
-                      <p className="text-black font-bold font-mono text-sm">
-                        {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
+                      <p className="text-black font-bold font-mono text-sm break-all sm:break-normal">
+                        {publicKey?.toString().slice(0, 8)}...
+                        {publicKey?.toString().slice(-8)}
+                      </p>
+                      <p className="text-xs text-amber-600 mt-1">
+                        Note: Keep your wallet safe ! it can not be change later
+                        ..
                       </p>
                     </div>
+                    {/* Keeping a disconnect button for dev/testing; remove if you want to enforce no-change */}
                     <button
-                      onClick={disconnectWallet}
-                      className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+                      onClick={() => disconnect()}
+                      className="px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors self-start sm:self-auto"
                     >
                       Disconnect
                     </button>
@@ -498,6 +517,7 @@ export const Register = () => {
                 </div>
               </div>
 
+              {/* Get OTP button */}
               <button
                 type="submit"
                 disabled={isSendingOtp}
@@ -538,7 +558,7 @@ export const Register = () => {
                 Verify Your Email
               </h2>
               <p className="text-gray-600 text-sm">
-                We've sent a 6-digit verification code to
+                {"We've"} sent a 6-digit verification code to
                 <br />
                 <span className="font-semibold text-black">
                   {formData.institueEmail}
@@ -560,7 +580,7 @@ export const Register = () => {
                   value={otp}
                   onChange={handleOtpChange}
                   className={`w-full px-4 py-3 border rounded-lg font-mono text-lg text-center tracking-widest transition-colors focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent ${
-                    errors.otp
+                    otpWarning
                       ? "border-red-500 bg-red-50"
                       : "border-gray-300 bg-white"
                   }`}
@@ -608,6 +628,15 @@ export const Register = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// Main export that wraps the component with wallet providers
+export const Register = () => {
+  return (
+    <WalletContextProvider>
+      <RegisterContent />
+    </WalletContextProvider>
   );
 };
 

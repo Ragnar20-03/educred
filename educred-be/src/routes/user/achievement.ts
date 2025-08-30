@@ -4,7 +4,9 @@ import FormData from "form-data";
 import fs from "fs";
 import multer from "multer";
 import path from "path";
-import { Account, Achivement, User } from "../../db/schema";
+import { Account, Achievement, User } from "../../db/schema";
+import { log } from "console";
+import { calculateCoins, calculateReputation } from "../../service/reward";
 
 
 
@@ -17,7 +19,7 @@ const upload = multer({ dest: "uploads/" });
 router.post('/:uid', upload.single("file"), async (req: Request, res: Response) => {
     const uid = req.params.uid;
     const file = req.file;
-    const { achivementName } = req.body
+    const { achievementName, achievementInfo } = req.body
     if (!file) {
         return res.status(400).json({ message: "Missing file or name fields." });
     }
@@ -56,9 +58,18 @@ router.post('/:uid', upload.single("file"), async (req: Request, res: Response) 
                 message: "Identification failed: certificate does not belong to this user",
             });
         }
-
-        // call that(check /: uid route) here if same achivement has been uploaded previously
-        axios.post(`http://backend:5100/api/v1/user/achivement/check/${uid}`, { description: result.ocr_text }).then(async (res1: any) => {
+        console.log("result from first ML is :   ", result)
+        // call that(check /: uid route) here if same achievement has been uploaded previously
+        axios.post(`http://backend:5100/api/v1/user/achievement/check/${uid}`, { description: result.ocr_text },
+            {
+                headers: {
+                    //     Authorization: req.headers.authorization, // forward user's Bearer token
+                    Cookie: `token=${req.cookies['token']}` // forward cookie manually
+                },
+                withCredentials: true
+            }
+        ).then(async (res1: any) => {
+            console.log("response is : from ml :  ", res1.data)
             if (res1.data.status == "failed") {
                 return res.status(501).json({
                     status: "failed",
@@ -66,23 +77,29 @@ router.post('/:uid', upload.single("file"), async (req: Request, res: Response) 
                 })
             }
             else if (res1.data.status == "unique") {
+                //------------  // this whole block has to be transfeered to transaction api //----------------------------------------------------
                 // ✅ Save achievement if verification success
-                const newAchievement = new Achivement({
-                    achivementName: achivementName || "",
-                    achivementCategory: result.expected_category || "Uncategorized",
-                    achivementDescription: result.ocr_text || "No OCR text extracted", // OCR text goes here
+                let coins = calculateCoins(result.predicted_category, "none")
+                let reputation = calculateReputation(result.predicted_category, "none")
+                const newAchievement = new Achievement({
+                    achievementName: achievementName || "",
+                    achievementInfo: achievementInfo,
+                    achievementCategory: result.predicted_category || "extracurricular",
+                    achievementDescription: result.ocr_text || "No OCR text extracted", // OCR text goes here
                     issuedDate: result.issued_date || null,
-                    enum: result.category || "extracurricular", // fallback category
                     isVerified: true,
                     user: account.uid,
-                    pointsAwarded: result.points || 10, // you can assign based on category/logic
+                    coinsAwarded: coins,
+                    reputationAwarded: reputation
                 });
-
+                // here minting of new tokens will happen 
+                //and then 
+                /// transaction will happen here
                 await newAchievement.save();
 
                 // Link achievement to user
                 await User.findByIdAndUpdate(account.uid, {
-                    $push: { achivements: newAchievement._id }
+                    $push: { achievements: newAchievement._id }
                 });
 
                 return res.status(200).json({
@@ -92,7 +109,7 @@ router.post('/:uid', upload.single("file"), async (req: Request, res: Response) 
                     achievement: newAchievement,
                     predicted_output: res1.data
                 });
-
+                //------------  // this whole block has to be transfeered to transaction api //----------------------------------------------------
             }
             else if (res1.data.status == "duplicate") {
                 return res.status(501).json({
@@ -101,9 +118,9 @@ router.post('/:uid', upload.single("file"), async (req: Request, res: Response) 
                     predicted_output: res1.data
                 })
             }
-            console.log("inside achivement/:uid , ")
+            console.log("inside achievement/:uid , ")
         }).catch((err) => {
-            console.log("inside achivement/:uid , ", err)
+            console.log("inside achievement/:uid , ", err)
         })
 
 
@@ -132,7 +149,7 @@ router.post("/check/:uid", async (req: Request, res: Response) => {
             return res.status(404).json({ message: "Account not found." });
         }
 
-        const user = await User.findById(account.uid).populate("achivements");
+        const user = await User.findById(account.uid).populate("achievements");
         if (!user) {
             return res.status(404).json({
                 status: "failed",
@@ -142,9 +159,9 @@ router.post("/check/:uid", async (req: Request, res: Response) => {
         }
 
         // Format past achievements for ML backend
-        const pastCertificates = (user.achivements || []).map((a: any) => ({
+        const pastCertificates = (user.achievements || []).map((a: any) => ({
 
-            description: a.achivementDescription || "",
+            description: a.achievementDescription || "",
         }));
 
         // Call Flask duplicate check service
@@ -168,6 +185,37 @@ router.post("/check/:uid", async (req: Request, res: Response) => {
         return res.status(500).json({
             status: "failed",
             message: " Something went wrong ! Failed to check for duplicates , check/:uid",
+        });
+    }
+});
+
+
+router.get('/:uid', async (req: Request, res: Response) => {
+    try {
+        const uid = req.params.uid;
+
+        // Find user and populate achievements
+        const user = await User.findById(uid)
+            .populate("achievements"); // 👈 populate achievements array
+
+        if (!user) {
+            return res.status(404).json({
+                status: "failed",
+                msg: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            status: "success",
+
+            achievements: user.achievements // all previous achievements
+        });
+
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            status: "failed",
+            msg: "Something went Wrong"
         });
     }
 });

@@ -21,6 +21,7 @@ function App() {
       </div>
 
       <Routes>
+        <Route path="/" element={<Home />} />
         <Route
           path="/admin"
           element={
@@ -29,10 +30,6 @@ function App() {
             </ProtectedRoute>
           }
         ></Route>
-      </Routes>
-
-      <Routes>
-        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 

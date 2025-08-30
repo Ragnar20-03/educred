@@ -9,10 +9,10 @@ export const router = express.Router();
 
 
 router.post('/get-otp', M_AuthMiddleware, async (req, res) => {
-    const { email } = req.body;
+    const { institueEmail } = req.body;
     let otp = OTP.getInstance();
-    let currentOtp = await otp?.generateOTP(email)
-    await sendOTP(email, currentOtp)
+    let currentOtp = await otp?.generateOTP(institueEmail)
+    await sendOTP(institueEmail, currentOtp)
     console.log("sedning");
 
     return res.status(200).json({
@@ -35,6 +35,7 @@ router.post('/verify-otp', M_AuthMiddleware, async (req, res) => {
 
         // Step 2: Validate OTP using your OTP class
         const otpInstance = OTP.getInstance();
+        console.log("hererererererererejhrejhrje", institueEmail + "   " + otp)
         const isOtpValid = await otpInstance?.validateOtp(institueEmail, otp);
 
         if (!isOtpValid) {
@@ -62,7 +63,7 @@ router.post('/verify-otp', M_AuthMiddleware, async (req, res) => {
             }
         });
 
-        return res.status(201).json({
+        return res.status(200).json({
             status: "success",
             msg: "Account and user created successfully!",
             accountId: accountDoc._id,
@@ -82,20 +83,31 @@ router.post('/verify-otp', M_AuthMiddleware, async (req, res) => {
 
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        Account.findOne(
-            {
-                $or: [{ institueEmail: email }, { email: email }]
-                , password: password
-            }
-        ).then((res1) => {
+        const { institueEmail, password } = req.body;
+        console.log("institue email and password ", institueEmail + "  " + password);
+
+        Account.findOne({ institueEmail: institueEmail, password: password }).then((res1) => {
             console.log("res1 is : ", res1)
             if (res1) {
                 let token = jwt.sign({ uid: res1.uid, aid: res1._id }, JWT_SECRET)
-                res.cookie('token', token);
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: false, // must be false for localhost HTTP
+                    sameSite: "lax", // safe for local dev
+                    maxAge: 24 * 60 * 60 * 1000 // 1 day
+                });
+                res.cookie('account', res1, {
+                    httpOnly: false,
+                    secure: false, // must be false for localhost HTTP
+                    sameSite: "lax", // safe for local dev
+                    maxAge: 24 * 60 * 60 * 1000 // 1 day
+                });
+
+
                 return res.status(200).json({
                     status: "success",
                     token: token,
+                    account: res1,
                     msg: "Login Succesful!"
                 })
             }
@@ -107,7 +119,9 @@ router.post('/login', async (req, res) => {
             }
         })
     } catch (err) {
+        console.log("error  CATCH login is : ", err)
         return res.status(500).json({
+
             status: "failed",
             msg: "Something went wrong!"
         })

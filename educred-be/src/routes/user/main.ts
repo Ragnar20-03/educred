@@ -1,14 +1,25 @@
 import express from "express"
 import { router as educationRouter } from "./education";
 import { router as detailRouter } from "./details";
-import { router as achivementRouter } from "./achivement";
+import { router as achivementRouter } from "./achievement";
 import { router as authRouter } from "./auth";
-import { M_AuthMiddleware } from "../../middlewares/authMiddleware";
+import { router as histroyRouter } from "./history";
 import { M_userMiddleware } from "../../middlewares/userMiddleware";
 
 export const router = express.Router();
 
 router.use('/auth', authRouter);
+
+// ------------------------------------------------------------------------------------------------------------------------
+
 router.use('/detail', M_userMiddleware, detailRouter)
+// ------------------------------------------------------------------------------------------------------------------------
+
+router.use('/achievement', M_userMiddleware, achivementRouter)
+// ------------------------------------------------------------------------------------------------------------------------
+
 router.use('/education', M_userMiddleware, educationRouter)
-router.use('/achivement', M_userMiddleware, achivementRouter)
+// ------------------------------------------------------------------------------------------------------------------------
+
+router.use('/histroy', histroyRouter)
+// ------------------------------------------------------------------------------------------------------------------------

@@ -24,7 +24,10 @@ const accountScheam = new Schema({
             walletAddress: { type: String, required: true },
             walletName: { type: String, required: true }
         }
-    }
+    },
+    clubAccount: { type: Boolean, required: false },
+    eduCred: { type: Number, default: 0 },
+    reputation: { type: Number, default: 0 },
 })
 
 const userSchema = new Schema({
@@ -47,37 +50,51 @@ const userSchema = new Schema({
             }
         }
     ],
-    ecred: { type: Number, default: 0 },
-    reputation: { type: Number, default: 0 },
-    achivements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achivement" }],
+    // ecred: { type: Number, default: 0 },
+    // reputation: { type: Number, default: 0 },
+    achievements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achievement" },], default: [],
 
 })
 
-const achivementSchema = new Schema({
-    achivementName: { type: String, required: false },
-    achivementDescription: { type: String, required: false },
+const achievementSchema = new Schema({
+    achievementName: { type: String, required: false },
+    achievementInfo: { type: String, required: false },
+    achievementDescription: { type: String, required: false },
     issuedDate: { type: String, required: false },
     submittedOn: { type: Date, default: Date.now },
-    enum: [
-        "hackathon",
-        "seminar",
-        "workshop",
-        "competition",
-        "certification-course",
-        "paper-presentation",
-        "internship",
-        "event-volunteering",
-        "club-participation",
-        "open-source",
-    ],
+    achievementCategory: {
+        type: String,
+        enum: [
+            "hackathon",
+            "seminar",
+            "workshop",
+            "competition",
+            "certification-course",
+            "paper-presentation",
+            "internship",
+            "event-volunteering",
+            "club-participation",
+            "open-source",
+            "extracurricular"
+        ],
+        required: true
+    },
+    achievementPosition: {
+        type: String,
+        enum: ["winner", "runner-up", "third", "participant", "none"],
+        required: false,
+        default: "none"
+    },
+
     isVerified: { type: Boolean, default: false },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
     // certificate :  { type: String, required: false }, 
     url: { type: String, required: false },
-    pointsAwarded: { type: Number, default: 0 }
+    coinsAwarded: { type: Number, default: 0 },
+    reputationAwarded: { type: Number, default: 0 }
 })
 
 
 export const Account = model("account", accountScheam);
 export const User = model("user", userSchema);
-export const Achivement = model("achivement", achivementSchema);
+export const Achievement = model("achievement", achievementSchema);

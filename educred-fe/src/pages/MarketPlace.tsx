@@ -5,7 +5,11 @@ import { useSelector } from "react-redux";
 import type { RootState } from "../redux/store";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { PublicKey, Transaction } from "@solana/web3.js";
+import {
+  PublicKey,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
 import {
   getOrCreateAssociatedTokenAccount,
   createTransferInstruction,
@@ -16,6 +20,8 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import Education from "./admin/Education";
+import { MEMO_PROGRAM_ID } from "@solana/spl-memo";
+
 interface NFT {
   id: string;
   name: string;
@@ -29,11 +35,11 @@ interface NFT {
   }[];
 }
 
-const EDUCRED_MINT = new PublicKey(
-  "9g5xTr4vmtoah1T5fg6VxWbhVzpvyAY65SKWJYk1wEd5"
+const token_mint_address = new PublicKey(
+  "2fbgVGvjfooK7Di28NPWCfMuVD4ybw1wpyqDawekqjHu"
 );
-const reciverPublicKey = new PublicKey(
-  "EvnH6fjkE6JnUWSBV985K2HYWk9wAbfayt9Dz8N9ZQw4"
+const reciverPublicKey = new PublicKey( // app's publci key (phantom -> chatgpt)
+  "9NrQmA5Bt5nvnsFywSAdvgAMaLtqFutomx2fVWbEyBBJ"
 );
 export const MarketPlace = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -44,8 +50,8 @@ export const MarketPlace = () => {
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const currentWallet = useSelector((state: RootState) => state.wallet);
   const account = useSelector((state: RootState) => state.account);
-  const { wallet, publicKey, sendTransaction } = useWallet();
-  const connection = useConnection();
+  const { publicKey, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   // Mock NFT data
   const nfts: NFT[] = [
     {
@@ -186,7 +192,7 @@ export const MarketPlace = () => {
     if (!isLoggedIn) {
       alert("Please login To Continue!");
       navigate("/login");
-    } else if (!wallet || !publicKey || !connection) {
+    } else if (!publicKey || !connection) {
       alert("Please connect to wallet");
       return;
     } else {
@@ -195,61 +201,55 @@ export const MarketPlace = () => {
       }
       //// ------------------------------------------------------------------------------------------------------------
       try {
-        const NAMASTE_MINT = new PublicKey(
-          "F52swsiYSy542EhdguxbgKece1GSL4b4V55cH7vGQsn7"
-        );
-        const recipientPublicKey = new PublicKey(
-          "EvnH6fjkE6JnUWSBV985K2HYWk9wAbfayt9Dz8N9ZQw4"
-        );
-
-        // ✅ Use getOrCreateAssociatedTokenAccount
         const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
-          connection.connection,
-          publicKey as any, // payer
-          NAMASTE_MINT,
-          publicKey // owner
+          connection,
+          //@ts-ignore
+          publicKey, // public key of user using wallet adapter
+          token_mint_address,
+          publicKey
         );
 
         const receiverTokenAccount = await getOrCreateAssociatedTokenAccount(
-          connection.connection,
-          publicKey as any, // payer
-          NAMASTE_MINT,
-          recipientPublicKey // receiver owner
+          connection,
+          //@ts-ignore
+          publicKey,
+          token_mint_address,
+          reciverPublicKey
         );
 
-        // Transfer 10 Namaste tokens
-        const senderAccountInfo = await connection.connection.getAccountInfo(
-          senderTokenAccount as any
+        const userBalance = connection.getTokenAccountBalance(
+          senderTokenAccount.address
         );
-        const receiverAccountInfo = await connection.connection.getAccountInfo(
-          receiverTokenAccount as any
-        );
-
-        const transaction = new Transaction();
-        // Create accounts if they don't exist
-        if (!senderAccountInfo) {
-          const createSenderATAIx = createAssociatedTokenAccountInstruction(
-            publicKey, // payer
-            senderTokenAccount as any, // ATA
-            publicKey, // owner
-            NAMASTE_MINT,
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
-          );
-          transaction.add(createSenderATAIx);
+        if (Number((await userBalance).value.uiAmount) < Number(price)) {
+          alert("You dont have enoufg ECRED To purchase this !");
+          console.log("hererer : balance is : ", userBalance);
+          return;
         }
-        const mintInfo = await getMint(connection.connection, NAMASTE_MINT);
-        const amount = BigInt(10) * BigInt(10 ** mintInfo.decimals);
+        // Convert amount to smallest units (9 decimals for SPL usually)
+        const DECIMALS = 9;
+        const amountToSend = BigInt(price) * BigInt(10 ** DECIMALS);
 
-        const signature = await sendTransaction(
-          transaction,
-          connection.connection
+        const transaction = new Transaction().add(
+          createTransferInstruction(
+            senderTokenAccount.address,
+            receiverTokenAccount.address,
+            publicKey,
+            Number(amountToSend)
+          ),
+          new TransactionInstruction({
+            keys: [],
+            programId: MEMO_PROGRAM_ID,
+            data: Buffer.from(
+              `Buying Product ${nftname} for ${price} EDUCRED tokens`
+            ),
+          })
         );
-        await connection.connection.confirmTransaction(signature, "confirmed");
 
-        alert(
-          `Successfully sent 10 Namaste tokens to ${recipientPublicKey.toBase58()}`
-        );
+        const signature = await sendTransaction(transaction, connection);
+
+        console.log("✅ Transaction sent:", signature);
+        alert(`Success! Tx: ${signature}`);
+
         // ------------------------------------------------------------------------------------------------------------
       } catch (error: any) {
         console.error("❌ Transaction failed:", error);

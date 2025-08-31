@@ -1,14 +1,18 @@
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { RootState } from "../redux/store";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { setWallet, removeWallet } from "../redux/walletSlice";
+import { PublicKey } from "@solana/web3.js";
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
 
 export const Nav = () => {
   const dispatch = useDispatch();
   const { publicKey, wallet, connected } = useWallet();
+  const { connection } = useConnection();
+  const [ecred, setEcred] = useState();
 
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
 
@@ -43,6 +47,7 @@ export const Nav = () => {
       {isLoggedIn && (
         <div className="flex flex-col md:flex-row items-center gap-4 mb-6">
           <WalletMultiButton />
+          <p>Educred : </p>
         </div>
       )}
     </div>

@@ -1,34 +1,61 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { useSelector } from "react-redux";
+import type { RootState } from "../redux/store";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey, Transaction } from "@solana/web3.js";
+import {
+  getOrCreateAssociatedTokenAccount,
+  createTransferInstruction,
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+  getMint,
+  createAssociatedTokenAccountInstruction,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import Education from "./admin/Education";
 interface NFT {
   id: string;
-  title: string;
+  name: string;
   description: string;
   image: string; // Placeholder image path
   price: number;
-  rarity: "Common" | "Rare" | "Epic" | "Legendary";
+  category: "Common" | "Rare" | "Epic" | "Legendary";
   attributes: {
     trait: string;
     value: string;
   }[];
 }
 
+const EDUCRED_MINT = new PublicKey(
+  "9g5xTr4vmtoah1T5fg6VxWbhVzpvyAY65SKWJYk1wEd5"
+);
+const reciverPublicKey = new PublicKey(
+  "EvnH6fjkE6JnUWSBV985K2HYWk9wAbfayt9Dz8N9ZQw4"
+);
 export const MarketPlace = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hoveredNFT, setHoveredNFT] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+
+  const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
+  const currentWallet = useSelector((state: RootState) => state.wallet);
+  const account = useSelector((state: RootState) => state.account);
+  const { wallet, publicKey, sendTransaction } = useWallet();
+  const connection = useConnection();
   // Mock NFT data
   const nfts: NFT[] = [
     {
       id: "nft-001",
-      title: "The Overachiever",
+      name: "The Overachiever",
       description:
         "Awarded for consistently achieving top grades and excelling in all courses.",
       image: "/placeholder.svg?height=300&width=300",
       price: 500,
-      rarity: "Legendary",
+      category: "Legendary",
       attributes: [
         { trait: "GPA", value: "4.0" },
         { trait: "Courses", value: "20+" },
@@ -37,12 +64,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-002",
-      title: "Consistency King",
+      name: "Consistency King",
       description:
         "For maintaining long learning streaks and consistent daily engagement.",
       image: "/placeholder.svg?height=300&width=300",
       price: 350,
-      rarity: "Epic",
+      category: "Epic",
       attributes: [
         { trait: "Streak", value: "365+ days" },
         { trait: "Attendance", value: "Perfect" },
@@ -51,12 +78,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-003",
-      title: "The Troubleshooter",
+      name: "The Troubleshooter",
       description:
         "Recognizes exceptional problem-solving skills and helping peers overcome challenges.",
       image: "/placeholder.svg?height=300&width=300",
       price: 400,
-      rarity: "Epic",
+      category: "Epic",
       attributes: [
         { trait: "Solutions", value: "100+" },
         { trait: "Forum Activity", value: "High" },
@@ -65,12 +92,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-004",
-      title: "Innovator's Spark",
+      name: "Innovator's Spark",
       description:
         "Celebrates creative thinking and groundbreaking project submissions.",
       image: "/placeholder.svg?height=300&width=300",
       price: 450,
-      rarity: "Legendary",
+      category: "Legendary",
       attributes: [
         { trait: "Projects", value: "5+" },
         { trait: "Originality", value: "High" },
@@ -79,12 +106,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-005",
-      title: "Community Builder",
+      name: "Community Builder",
       description:
         "Awarded for fostering a positive and collaborative learning environment.",
       image: "/placeholder.svg?height=300&width=300",
       price: 280,
-      rarity: "Rare",
+      category: "Rare",
       attributes: [
         { trait: "Engagement", value: "Very High" },
         { trait: "Support", value: "Consistent" },
@@ -93,12 +120,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-006",
-      title: "The Mentor's Mark",
+      name: "The Mentor's Mark",
       description:
         "For guiding junior students and contributing to their academic success.",
       image: "/placeholder.svg?height=300&width=300",
       price: 320,
-      rarity: "Rare",
+      category: "Rare",
       attributes: [
         { trait: "Mentees", value: "10+" },
         { trait: "Guidance", value: "Effective" },
@@ -107,12 +134,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-007",
-      title: "Early Bird Learner",
+      name: "Early Bird Learner",
       description:
         "Recognizes students who consistently start and complete courses ahead of schedule.",
       image: "/placeholder.svg?height=300&width=300",
       price: 200,
-      rarity: "Common",
+      category: "Common",
       attributes: [
         { trait: "Punctuality", value: "High" },
         { trait: "Completion Rate", value: "100%" },
@@ -121,12 +148,12 @@ export const MarketPlace = () => {
     },
     {
       id: "nft-008",
-      title: "Quiz Whiz",
+      name: "Quiz Whiz",
       description:
         "Awarded for exceptional performance in quizzes and assessments.",
       image: "/placeholder.svg?height=300&width=300",
       price: 250,
-      rarity: "Common",
+      category: "Common",
       attributes: [
         { trait: "Quiz Score", value: "90%+" },
         { trait: "Accuracy", value: "High" },
@@ -140,8 +167,8 @@ export const MarketPlace = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const getRarityStyle = (rarity: string) => {
-    switch (rarity) {
+  const getcategoryStyle = (category: string) => {
+    switch (category) {
       case "Common":
         return "bg-gray-100 text-gray-700 border-gray-200";
       case "Rare":
@@ -155,10 +182,95 @@ export const MarketPlace = () => {
     }
   };
 
-  const handleBuyClick = (nftTitle: string, price: number) => {
-    alert(
-      `Attempting to buy "${nftTitle}" for ${price} EduCred Coins! (This is a demo action)`
-    );
+  const handleBuyClick = async (nftname: string, price: number) => {
+    if (!isLoggedIn) {
+      alert("Please login To Continue!");
+      navigate("/login");
+    } else if (!wallet || !publicKey || !connection) {
+      alert("Please connect to wallet");
+      return;
+    } else {
+      if (account.wallet?.walletAddress != currentWallet.publicKey) {
+        alert("You are using differnet wallet to buy this !");
+      }
+      //// ------------------------------------------------------------------------------------------------------------
+      try {
+        const NAMASTE_MINT = new PublicKey(
+          "F52swsiYSy542EhdguxbgKece1GSL4b4V55cH7vGQsn7"
+        );
+        const recipientPublicKey = new PublicKey(
+          "EvnH6fjkE6JnUWSBV985K2HYWk9wAbfayt9Dz8N9ZQw4"
+        );
+
+        // ✅ Use getOrCreateAssociatedTokenAccount
+        const senderTokenAccount = await getOrCreateAssociatedTokenAccount(
+          connection.connection,
+          publicKey as any, // payer
+          NAMASTE_MINT,
+          publicKey // owner
+        );
+
+        const receiverTokenAccount = await getOrCreateAssociatedTokenAccount(
+          connection.connection,
+          publicKey as any, // payer
+          NAMASTE_MINT,
+          recipientPublicKey // receiver owner
+        );
+
+        // Transfer 10 Namaste tokens
+        const senderAccountInfo = await connection.connection.getAccountInfo(
+          senderTokenAccount as any
+        );
+        const receiverAccountInfo = await connection.connection.getAccountInfo(
+          receiverTokenAccount as any
+        );
+
+        const transaction = new Transaction();
+        // Create accounts if they don't exist
+        if (!senderAccountInfo) {
+          const createSenderATAIx = createAssociatedTokenAccountInstruction(
+            publicKey, // payer
+            senderTokenAccount as any, // ATA
+            publicKey, // owner
+            NAMASTE_MINT,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+          );
+          transaction.add(createSenderATAIx);
+        }
+        const mintInfo = await getMint(connection.connection, NAMASTE_MINT);
+        const amount = BigInt(10) * BigInt(10 ** mintInfo.decimals);
+
+        const signature = await sendTransaction(
+          transaction,
+          connection.connection
+        );
+        await connection.connection.confirmTransaction(signature, "confirmed");
+
+        alert(
+          `Successfully sent 10 Namaste tokens to ${recipientPublicKey.toBase58()}`
+        );
+        // ------------------------------------------------------------------------------------------------------------
+      } catch (error: any) {
+        console.error("❌ Transaction failed:", error);
+
+        if (error.message.includes("TokenAccountNotFoundError")) {
+          alert(
+            "❌ Token account not found. Please ensure you have NAMASTE tokens in your wallet."
+          );
+        } else if (error.message.includes("InsufficientFundsError")) {
+          alert(
+            "❌ Insufficient funds. Please check your SOL balance for transaction fees."
+          );
+        } else if (error.message.includes("insufficient lamports")) {
+          alert(
+            "❌ Insufficient NAMASTE tokens. You need at least 10 NAMASTE tokens to purchase this NFT."
+          );
+        } else {
+          alert(`❌ Transaction failed: ${error.message}`);
+        }
+      }
+    }
     // In a real DApp, this would trigger a blockchain transaction
   };
 
@@ -218,21 +330,21 @@ export const MarketPlace = () => {
               <div className="relative w-full h-48 bg-gray-100 flex items-center justify-center overflow-hidden border-b border-gray-200">
                 <img
                   src={nft.image || "/placeholder.svg"}
-                  alt={nft.title}
+                  alt={nft.name}
                   width={300}
                   height={300}
                   className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-110"
                 />
                 <div
-                  className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold border ${getRarityStyle(
-                    nft.rarity
+                  className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-semibold border ${getcategoryStyle(
+                    nft.category
                   )}`}
                 >
-                  {nft.rarity}
+                  {nft.category}
                 </div>
               </div>
               <div className="p-4 space-y-3">
-                <h3 className="text-xl font-bold text-black">{nft.title}</h3>
+                <h3 className="text-xl font-bold text-black">{nft.name}</h3>
                 <p className="text-gray-600 text-sm line-clamp-2">
                   {nft.description}
                 </p>
@@ -257,7 +369,7 @@ export const MarketPlace = () => {
                     <span className="text-sm text-gray-600">EduCred</span>
                   </div>
                   <button
-                    onClick={() => handleBuyClick(nft.title, nft.price)}
+                    onClick={() => handleBuyClick(nft.name, nft.price)}
                     className="group relative px-5 py-2 bg-black text-white font-bold rounded-lg overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-black/20 transform"
                   >
                     <span className="relative z-10 flex items-center justify-center">

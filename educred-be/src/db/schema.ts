@@ -29,30 +29,19 @@ const accountScheam = new Schema({
     eduCred: { type: Number, default: 0 },
     reputation: { type: Number, default: 0 },
 })
-
+const educationSchema = new Schema({
+    institute: { type: String, required: true },
+    degree: { type: String, required: true },
+    duration: { type: String, required: true },
+    percentage: { type: String, required: true },
+    certificate: { type: String, required: false },
+})
 const userSchema = new Schema({
-    education: [
-        {
-            instituteName: {
-                type: String,
-            },
-            degree: {
-                type: String
-            },
-            place: {
-                type: String,
-            },
-            duration: {
-                type: String,
-            },
-            percentage: {
-                type: String,
-            }
-        }
-    ],
+    education: [{ type: mongoose.Schema.Types.ObjectId, ref: "education" }],
     // ecred: { type: Number, default: 0 },
-    // reputation: { type: Number, default: 0 },
-    achievements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achievement" },], default: [],
+    // reputation: { type: Number, default: 0 },   
+    achievements: [{ type: mongoose.Schema.Types.ObjectId, ref: "achievement" }],
+    nft: [{ type: mongoose.Schema.Types.ObjectId, ref: "nft" }]
 
 })
 
@@ -94,7 +83,24 @@ const achievementSchema = new Schema({
     reputationAwarded: { type: Number, default: 0 }
 })
 
+const nftSchema = new Schema({
+    name: { type: String, required: true },
+    description: { type: String, required: true },
+    image: { type: String, requierd: true },
+    category: {
+        type: String,
+        enum: [
+            'rare',
+            "common",
+            "epic",
+            "legendary"
+        ]
+    },
+    price: { type: Number, required: true, default: 0 }
+})
 
 export const Account = model("account", accountScheam);
 export const User = model("user", userSchema);
+export const NFT = model('nft', nftSchema);
+export const Education = model('education', educationSchema);
 export const Achievement = model("achievement", achievementSchema);

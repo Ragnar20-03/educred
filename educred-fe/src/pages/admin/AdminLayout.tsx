@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 
 import Rankings from "./Rankings";
-import MarketPlace from "../MarketPlace";
+
 import Education from "./Education";
 import History from "./History";
 import Profile from "./Profile";
@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../redux/store";
 import { logout } from "../../redux/authSlice";
 import Achievements from "./Achievement";
+import { MarketPlace } from "../MarketPlace";
 
 interface NavigationItem {
   id: string;

@@ -37,7 +37,19 @@ const accountSlice = createSlice({
     initialState,
     reducers: {
         setAccount: (state, action: PayloadAction<AccountState>) => {
-            return { ...state, ...action.payload };
+            state.institueEmail = action.payload.institueEmail;
+            state.email = action.payload.email;
+            state.fname = action.payload.fname;
+            state.lname = action.payload.lname;
+            state.ph = action.payload.ph;
+            state.uid = action.payload.uid;
+            state.wallet = action.payload.wallet;
+            state.clubAccount = action.payload.clubAccount;
+            state.eduCred = action.payload.eduCred;
+            state.reputation = action.payload.reputation;
+
+            console.log("set Account is : ", state.wallet, "name is : ", state.fname, " ", state.lname);
+
         },
         updateReputation: (state, action: PayloadAction<number>) => {
             state.reputation += action.payload;

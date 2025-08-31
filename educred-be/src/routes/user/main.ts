@@ -1,4 +1,5 @@
 import express from "express"
+import { router as blockchainRouter } from "./solana/solana";
 import { router as educationRouter } from "./education";
 import { router as detailRouter } from "./details";
 import { router as achivementRouter } from "./achievement";
@@ -23,3 +24,11 @@ router.use('/education', M_userMiddleware, educationRouter)
 
 router.use('/histroy', histroyRouter)
 // ------------------------------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------------------------------
+router.use('/transaction', blockchainRouter)
+router.use('/hiii', (req, res) => {
+    return res.json({
+        msg: "hii"
+    })
+})

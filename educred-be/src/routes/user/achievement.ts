@@ -116,8 +116,9 @@ router.post('/:uid', upload.single("file"), async (req: Request, res: Response) 
                             amount: coins,
                         }
                     );
+                    console.log("reward_edcured is ; : : : : ", reward_educred)
                     //@ts-ignore
-                    if (!reward_educred.data.success) {
+                    if (reward_educred.data.status !== "success") {
                         throw new Error("Token transfer failed");
                     }
 

@@ -1,12 +1,12 @@
 import express, { Request, Response } from "express";
 import { Connection, Keypair, PublicKey, Transaction, clusterApiUrl, sendAndConfirmTransaction } from "@solana/web3.js";
-import { createTransferInstruction, getOrCreateAssociatedTokenAccount, transfer } from "@solana/spl-token";
+import { createTransferInstruction, getOrCreateAssociatedTokenAccount, TOKEN_2022_PROGRAM_ID, transfer } from "@solana/spl-token";
 
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
 export const router = express.Router();
 
-const my_token_mint_address = new PublicKey("2fbgVGvjfooK7Di28NPWCfMuVD4ybw1wpyqDawekqjHu")
+const my_token_mint_address = new PublicKey("BPKvQZZMEParhUuxrZX8EAxzpoy9dxXdQFjMfeuwuymX")
 const sender_keypair = Keypair.fromSecretKey(Uint8Array.from([113, 13, 85, 127, 40, 90, 73, 198, 1, 80, 94, 20, 92, 65, 157, 220, 82, 109, 143, 104, 177, 199, 87, 187, 245, 237, 13, 89, 111, 126, 61, 81, 124, 118, 143, 98, 221, 37, 88, 154, 200, 89, 249, 127, 64, 22, 219, 239, 252, 18, 118, 181, 126, 156, 87, 46, 112, 109, 177, 170, 198, 67, 94, 205]))
 
 // const sender_public_key = sender_secrete_key.publicKey;
@@ -26,7 +26,11 @@ router.post("/send-educred", async (req: Request, res: Response) => {
             connection,
             sender_keypair,
             my_token_mint_address,
-            sender_keypair.publicKey
+            sender_keypair.publicKey,
+            true,
+            "confirmed",
+            {},
+            TOKEN_2022_PROGRAM_ID
         )
 
         console.log("SenderTokenAccount is : ", senderTokenAccount);
@@ -35,7 +39,11 @@ router.post("/send-educred", async (req: Request, res: Response) => {
             connection,
             sender_keypair,
             my_token_mint_address,
-            receiverPublicKey
+            receiverPublicKey,
+            true,
+            "confirmed",
+            {},
+            TOKEN_2022_PROGRAM_ID
         );
         console.log("Receiver Token Account is : ", receiverTokenAccount);
 
@@ -52,7 +60,9 @@ router.post("/send-educred", async (req: Request, res: Response) => {
                 senderTokenAccount.address,       // source ATA
                 receiverTokenAccount.address,     // destination ATA
                 sender_keypair.publicKey,          // owner of source ATA
-                amountToSend
+                amountToSend,
+                [],
+                TOKEN_2022_PROGRAM_ID
             )
         );
 

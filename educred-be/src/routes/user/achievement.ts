@@ -10,6 +10,7 @@ import { calculateCoins, calculateReputation } from "../../service/reward";
 
 
 
+
 export const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
@@ -77,39 +78,74 @@ router.post('/:uid', upload.single("file"), async (req: Request, res: Response) 
                 })
             }
             else if (res1.data.status == "unique") {
-                //------------  // this whole block has to be transfeered to transaction api //----------------------------------------------------
-                // ✅ Save achievement if verification success
-                let coins = calculateCoins(result.predicted_category, "none")
-                let reputation = calculateReputation(result.predicted_category, "none")
-                const newAchievement = new Achievement({
-                    achievementName: achievementName || "",
-                    achievementInfo: achievementInfo,
-                    achievementCategory: result.predicted_category || "extracurricular",
-                    achievementDescription: result.ocr_text || "No OCR text extracted", // OCR text goes here
-                    issuedDate: result.issued_date || null,
-                    isVerified: true,
-                    user: account.uid,
-                    coinsAwarded: coins,
-                    reputationAwarded: reputation
-                });
-                // here minting of new tokens will happen 
-                //and then 
-                /// transaction will happen here
-                await newAchievement.save();
+                const session = await Achievement.startSession();
+                session.startTransaction();
 
-                // Link achievement to user
-                await User.findByIdAndUpdate(account.uid, {
-                    $push: { achievements: newAchievement._id }
-                });
+                try {
+                    // ✅ Calculate reward values
+                    let coins = calculateCoins(result.predicted_category, "none");
+                    let reputation = calculateReputation(result.predicted_category, "none");
 
-                return res.status(200).json({
-                    uid,
-                    status: "success",
-                    message: "Achievement saved successfully",
-                    achievement: newAchievement,
-                    predicted_output: res1.data
-                });
-                //------------  // this whole block has to be transfeered to transaction api //----------------------------------------------------
+                    // ✅ Create achievement (inside session)
+                    const newAchievement = new Achievement({
+                        achievementName: achievementName || "",
+                        achievementInfo: achievementInfo,
+                        achievementCategory: result.predicted_category || "extracurricular",
+                        achievementDescription: result.ocr_text || "No OCR text extracted",
+                        issuedDate: result.issued_date || null,
+                        isVerified: true,
+                        user: account.uid,
+                        coinsAwarded: coins,
+                        reputationAwarded: reputation,
+                    });
+
+                    await newAchievement.save({ session });
+
+                    // ✅ Link achievement to user (inside session)
+                    await User.findByIdAndUpdate(
+                        account.uid,
+                        { $push: { achievements: newAchievement._id } },
+                        { session }
+                    );
+
+                    // ✅ Send EDUCred tokens (external API call)
+                    const reward_educred = await axios.post(
+                        "http://backend:5100/api/v1/user/transaction/send-educred",
+                        {
+                            to: account.wallet?.walletAddress,
+                            amount: coins,
+                        }
+                    );
+                    //@ts-ignore
+                    if (!reward_educred.data.success) {
+                        throw new Error("Token transfer failed");
+                    }
+
+                    // ✅ Commit transaction if everything passed
+                    await session.commitTransaction();
+                    session.endSession();
+
+                    return res.status(200).json({
+                        uid,
+                        status: "success",
+                        message: "Achievement saved successfully",
+                        achievement: newAchievement,
+                        predicted_output: res1.data,
+                    });
+
+                } catch (err: any) {
+                    // ❌ Rollback all DB changes
+                    await session.abortTransaction();
+                    session.endSession();
+
+                    console.error("Transaction failed:", err.message);
+
+                    return res.status(500).json({
+                        status: "failed",
+                        msg: "Transaction failed, rolled back all changes",
+                        error: err.message,
+                    });
+                }
             }
             else if (res1.data.status == "duplicate") {
                 return res.status(501).json({

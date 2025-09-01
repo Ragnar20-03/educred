@@ -1,6 +1,31 @@
 {
-  "name": "EduCred",
+  "name": "EDUCRED",
   "symbol": "ECRED",
-  "description": "EduCred is a utility token designed for education and achievement recognition.",
-  "image": "https://github.com/Ragnar20-03/educred/blob/main/educred-be/src/routes/user/solana/ecred2.jpeg?raw=true"
+  "description": "The official EDUCred token for student achievements and reputation.",
+  "image": "https://raw.githubusercontent.com/Ragnar20-03/educred/main/educred-be/src/routes/user/solana/logo.png",
+  "attributes": [
+    {
+      "trait_type": "Project",
+      "value": "EduCred"
+    },
+    {
+      "trait_type": "Category",
+      "value": "Education"
+    }
+  ],
+  "properties": {
+    "files": [
+      {
+        "uri": "https://raw.githubusercontent.com/Ragnar20-03/educred/main/educred-be/src/routes/user/solana/logo.png",
+        "type": "image/png"
+      }
+    ],
+    "category": "image",
+    "creators": [
+      {
+        "address": "YOUR_WALLET_ADDRESS",
+        "share": 100
+      }
+    ]
+  }
 }
